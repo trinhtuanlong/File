@@ -92,6 +92,8 @@ call plug#begin('~/.vim/plugged')
   Plug 'tommcdo/vim-exchange'
   Plug 'tpope/vim-fugitive'
   Plug 'preservim/vim-pencil'
+  Plug 'junegunn/fzf', {'do': {->fzf#install()}}
+  Plug 'junegunn/fzf.vim'
 
 call plug#end()
 " }}}
@@ -101,6 +103,33 @@ call plug#end()
 
 " }}}
 " VIMSCRIPT -------------------------------------------------------------- {{{
+
+" Make Ag searches only inside file and not filenames by making it search only
+" from the 4th :
+" command! -bang -nargs=* Ag
+" 	\ call fzf#vim#ag(<q-args>,
+" 	\				  fzf#vim#with_preview(
+" 	\ 				  {'options': '--delimiter : --nth 4..'},
+" 	\				  'right:50%'),
+" 	\				  <bang>0)
+
+" Allows passing arguments to :Ag
+function! s:ag_with_opts(arg, bang)
+	let tokens = split(a:arg)
+	let ag_opts = join(filter(copy(tokens), 'v:val =~ "^-"')).' --delimiter : --nth 4..'
+	let dir = join(filter(copy(tokens), 'v:val =~ "^\/"'))
+	let query = join(filter(copy(tokens), 'v:val !~ "^[-/]"'))
+	let ag_args = fzf#vim#with_preview({'options': ag_opts},
+				\					   'right:50%')
+	let dir = substitute(dir,'^\/','','')
+	let ag_args['dir'] = dir
+	call fzf#vim#ag(query,
+				\	ag_args,
+				\	a:bang)
+endfunction
+
+autocmd VimEnter * command! -nargs=* -bang Ag
+	\ call s:ag_with_opts(<q-args>, <bang>0)
 
 " Enable the marker method of folding.
 augroup filetype_vim

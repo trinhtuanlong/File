@@ -31,6 +31,9 @@ set tabstop=4
 " Set encoding to utf-8
 set encoding=utf-8
 
+" Make backspace works
+set backspace=indent,eol,start
+
 " Use space characters instead of tabs.
 "set expandtab
 
@@ -74,9 +77,29 @@ set wildmenu
 " Make wildmenu behave like similar to Bash completion.
 set wildmode=list:longest
 
+"Set colorscheme to gruvbox8
+set background=dark
+colorscheme gruvbox8_hard
+
 " There are certain files that we would never want to edit with Vim.
 " Wildmenu will ignore files with these extensions.
 set wildignore=*.docx,*.jpg,*.png,*.gif,*.pdf,*.pyc,*.exe,*.flv,*.img,*.xlsx
+
+" Make :UltiSnipsEdit to split window.
+let g:UltiSnipsEditSplit="vertical"
+
+" Enable ALE autocompletion
+let g:ale_completion_enabled=1
+
+" Set okular as default viewer
+let g:vimtex_view_method = 'zathura'
+
+" Set clang-format codestyle
+let g:clang_format#code_style = 'chromium'
+
+" Allows local vimrc
+set exrc
+
 
 " PLUGINS ---------------------------------------------------------------- {{{
 
@@ -94,6 +117,16 @@ call plug#begin('~/.vim/plugged')
   Plug 'preservim/vim-pencil'
   Plug 'junegunn/fzf', {'do': {->fzf#install()}}
   Plug 'junegunn/fzf.vim'
+  Plug 'lervag/vimtex'
+  Plug 'SirVer/ultisnips'
+  Plug 'honza/vim-snippets'
+  Plug 'neovimhaskell/haskell-vim'
+  Plug 'alx741/vim-hindent'
+  Plug 'sdiehl/vim-ormolu'
+  Plug 'tikhomirov/vim-glsl'
+  Plug 'github/copilot.vim'
+  Plug 'rhysd/vim-clang-format'
+  Plug 'whonore/Coqtail'
 
 call plug#end()
 " }}}
@@ -131,15 +164,76 @@ endfunction
 autocmd VimEnter * command! -nargs=* -bang Ag
 	\ call s:ag_with_opts(<q-args>, <bang>0)
 
-" Enable the marker method of folding.
+" Enable the marker method of folding for vimscript
 augroup filetype_vim
     autocmd!
     autocmd FileType vim setlocal foldmethod=marker
 augroup END
 
+"Make ibus work with vim
+function! IBusOff()
+	" Lưu engine hiện tại
+	let g:ibus_prev_engine = system('ibus engine')
+	" Chuyển sang engine tiếng Anh
+	" Nếu bạn thấy cái cờ ở đây
+	" khả năng là font của bạn đang render emoji lung tung...
+	" xkb : us :: eng (không có dấu cách)
+	silent! execute '!ibus engine xkb:us::eng'
+endfunction
+function! IBusOn()
+	let l:current_engine = system('ibus engine')
+	" nếu engine được set trong normal mode thì
+	" lúc vào insert mode duùn luôn engine đó
+	if l:current_engine !~? 'xkb:us::eng'
+		let g:ibus_prev_engine = l:current_engine
+	endif
+	" Khôi phục lại engine
+	silent! execute '!ibus engine ' . g:ibus_prev_engine
+endfunction
+augroup IBusHandler
+	" Khôi phục ibus engine khi tìm kiếm
+	autocmd CmdLineEnter [/?] silent call IBusOn()
+	autocmd CmdLineLeave [/?] silent call IBusOff()
+	autocmd CmdLineEnter \? silent call IBusOn()
+	autocmd CmdLineLeave \? silent call IBusOff()
+	" Khôi phục ibus engine khi vào insert mode
+	autocmd InsertEnter * silent call IBusOn()
+	" Tắt ibus engine khi vào normal mode
+	autocmd InsertLeave * silent call IBusOff()
+augroup END
+"Turn off ibus when enter vim
+silent call IBusOff()
+
+" Turn on PencilSoft
+autocmd VimEnter * PencilSoft
+
+" Enable the indent method of folding for Fortran
 augroup filetype_f90
 	autocmd!
 	autocmd FileType fortran setlocal foldmethod=indent
+	autocmd FileType fortran 
+				\let g:ale_fortran_gcc_options="-Wall -fdefault-real-8 -fdefault-double-8 -Wextra -Wimplicit-interface -llapack -lrefblas"
+augroup END
+
+" Enable folding method for C++
+augroup filetype_cpp
+	autocmd!
+	autocmd FileType cpp setlocal foldmethod=indent
+augroup END
+autocmd FileType cpp ClangFormatAutoEnable
+
+" Enable folding method for LaTex
+augroup filetype_tex
+	autocmd!
+	autocmd FileType tex setlocal foldmethod=indent
+augroup END
+
+" Enable syntax for Haskell
+augroup filetype_hs
+	autocmd!
+	autocmd FileType haskell setlocal expandtab
+	autocmd FileType haskell setlocal foldmethod=indent
+	autocmd FileType haskell setlocal sw=2
 augroup END
 
 " If the current file type is HTML, set indentation to 2 spaces.
